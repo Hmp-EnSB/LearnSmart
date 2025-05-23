@@ -8,9 +8,10 @@ import {
   badges, type Badge, type InsertBadge,
   userBadges, type UserBadge, type InsertUserBadge
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, asc, isNull, sql } from "drizzle-orm";
 import { slugify } from "./utils";
 
-// Interface for storage operations
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -77,522 +78,589 @@ export interface IStorage {
   getAdminAnalytics(): Promise<any>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private courses: Map<number, Course>;
-  private modules: Map<number, Module>;
-  private assignments: Map<number, Assignment>;
-  private enrollments: Map<number, Enrollment>;
-  private submissions: Map<number, Submission>;
-  private badges: Map<number, Badge>;
-  private userBadges: Map<number, UserBadge>;
-  
-  private userId: number;
-  private courseId: number;
-  private moduleId: number;
-  private assignmentId: number;
-  private enrollmentId: number;
-  private submissionId: number;
-  private badgeId: number;
-  private userBadgeId: number;
-  
-  constructor() {
-    this.users = new Map();
-    this.courses = new Map();
-    this.modules = new Map();
-    this.assignments = new Map();
-    this.enrollments = new Map();
-    this.submissions = new Map();
-    this.badges = new Map();
-    this.userBadges = new Map();
-    
-    this.userId = 1;
-    this.courseId = 1;
-    this.moduleId = 1;
-    this.assignmentId = 1;
-    this.enrollmentId = 1;
-    this.submissionId = 1;
-    this.badgeId = 1;
-    this.userBadgeId = 1;
-    
-    // Create default admin user
-    this.createUser({
-      username: 'admin',
-      password: 'admin123',
-      role: 'admin',
-      email: 'admin@learnsmart.com',
-      fullName: 'System Administrator',
-      totpSecret: '3hnvnk4yt73eiuhqskuy6tdyr5tbect2'
-    });
-    
-    // Create default tutor
-    this.createUser({
-      username: 'tutor',
-      password: 'tutor123',
-      role: 'tutor',
-      email: 'tutor@learnsmart.com',
-      fullName: 'Demo Tutor',
-      totpSecret: 'gezdgnbvgy3tqojqgezdgnbvgy3tqojq'
-    });
-    
-    // Create default student
-    this.createUser({
-      username: 'student',
-      password: 'student123',
-      role: 'student',
-      email: 'student@learnsmart.com',
-      fullName: 'Demo Student',
-      totpSecret: 'ifascult7gfazhptqifascult7gfazhpt'
-    });
-  }
-  
+export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-  
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
-  }
-  
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
-  }
-  
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userId++;
-    const user: User = { ...insertUser, id, createdAt: new Date() };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
-  
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...insertUser,
+        role: insertUser.role || 'student', // Default role
+        createdAt: new Date()
+      })
+      .returning();
+    return user;
+  }
+
   async updateUser(id: number, data: Partial<User>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...data };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const [updated] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
   }
-  
+
   async getUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users);
   }
-  
+
   // Course operations
   async getCourse(id: number): Promise<Course | undefined> {
-    return this.courses.get(id);
-  }
-  
-  async getCourseBySlug(slug: string): Promise<Course | undefined> {
-    return Array.from(this.courses.values()).find(course => course.slug === slug);
-  }
-  
-  async getCourses(filters?: { tutorId?: number, published?: boolean }): Promise<Course[]> {
-    let courses = Array.from(this.courses.values());
-    
-    if (filters) {
-      if (filters.tutorId !== undefined) {
-        courses = courses.filter(course => course.tutorId === filters.tutorId);
-      }
-      
-      if (filters.published !== undefined) {
-        courses = courses.filter(course => course.published === filters.published);
-      }
-    }
-    
-    return courses;
-  }
-  
-  async createCourse(insertCourse: InsertCourse): Promise<Course> {
-    const id = this.courseId++;
-    const slug = slugify(insertCourse.title);
-    const course: Course = { 
-      ...insertCourse, 
-      id, 
-      slug, 
-      createdAt: new Date() 
-    };
-    this.courses.set(id, course);
+    const [course] = await db.select().from(courses).where(eq(courses.id, id));
     return course;
   }
-  
-  async updateCourse(id: number, data: Partial<Course>): Promise<Course | undefined> {
-    const course = this.courses.get(id);
-    if (!course) return undefined;
+
+  async getCourseBySlug(slug: string): Promise<Course | undefined> {
+    const [course] = await db.select().from(courses).where(eq(courses.slug, slug));
+    return course;
+  }
+
+  async getCourses(filters?: { tutorId?: number, published?: boolean }): Promise<Course[]> {
+    let query = db.select().from(courses);
     
-    const updatedCourse = { ...course, ...data };
-    
-    // Update slug if title changes
-    if (data.title && data.title !== course.title) {
-      updatedCourse.slug = slugify(data.title);
+    if (filters?.tutorId) {
+      query = query.where(eq(courses.tutorId, filters.tutorId));
     }
     
-    this.courses.set(id, updatedCourse);
-    return updatedCourse;
+    if (filters?.published !== undefined) {
+      query = query.where(eq(courses.published, filters.published));
+    }
+    
+    return await query;
   }
-  
+
+  async createCourse(insertCourse: InsertCourse): Promise<Course> {
+    const slug = slugify(insertCourse.title);
+    
+    const [course] = await db
+      .insert(courses)
+      .values({
+        ...insertCourse,
+        slug,
+        published: insertCourse.published || false,
+        createdAt: new Date()
+      })
+      .returning();
+    
+    return course;
+  }
+
+  async updateCourse(id: number, data: Partial<Course>): Promise<Course | undefined> {
+    // If title is updated, also update the slug
+    if (data.title) {
+      data.slug = slugify(data.title);
+    }
+    
+    const [updated] = await db
+      .update(courses)
+      .set(data)
+      .where(eq(courses.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   async deleteCourse(id: number): Promise<boolean> {
-    return this.courses.delete(id);
+    const result = await db.delete(courses).where(eq(courses.id, id));
+    return result.rowCount > 0;
   }
-  
+
   // Module operations
   async getModule(id: number): Promise<Module | undefined> {
-    return this.modules.get(id);
-  }
-  
-  async getModulesByCourse(courseId: number): Promise<Module[]> {
-    return Array.from(this.modules.values())
-      .filter(module => module.courseId === courseId)
-      .sort((a, b) => a.order - b.order);
-  }
-  
-  async createModule(insertModule: InsertModule): Promise<Module> {
-    const id = this.moduleId++;
-    const module: Module = { ...insertModule, id };
-    this.modules.set(id, module);
+    const [module] = await db.select().from(modules).where(eq(modules.id, id));
     return module;
   }
-  
-  async updateModule(id: number, data: Partial<Module>): Promise<Module | undefined> {
-    const module = this.modules.get(id);
-    if (!module) return undefined;
+
+  async getModulesByCourse(courseId: number): Promise<Module[]> {
+    const result = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.courseId, courseId))
+      .orderBy(asc(modules.order));
     
-    const updatedModule = { ...module, ...data };
-    this.modules.set(id, updatedModule);
-    return updatedModule;
+    return result;
   }
-  
+
+  async createModule(insertModule: InsertModule): Promise<Module> {
+    const [module] = await db
+      .insert(modules)
+      .values({
+        ...insertModule,
+        order: insertModule.order || 0
+      })
+      .returning();
+    
+    return module;
+  }
+
+  async updateModule(id: number, data: Partial<Module>): Promise<Module | undefined> {
+    const [updated] = await db
+      .update(modules)
+      .set(data)
+      .where(eq(modules.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   async deleteModule(id: number): Promise<boolean> {
-    return this.modules.delete(id);
+    const result = await db.delete(modules).where(eq(modules.id, id));
+    return result.rowCount > 0;
   }
-  
+
   // Assignment operations
   async getAssignment(id: number): Promise<Assignment | undefined> {
-    return this.assignments.get(id);
-  }
-  
-  async getAssignmentsByModule(moduleId: number): Promise<Assignment[]> {
-    return Array.from(this.assignments.values())
-      .filter(assignment => assignment.moduleId === moduleId);
-  }
-  
-  async getAssignmentsByCourse(courseId: number): Promise<Assignment[]> {
-    const modules = await this.getModulesByCourse(courseId);
-    const moduleIds = modules.map(module => module.id);
-    
-    return Array.from(this.assignments.values())
-      .filter(assignment => moduleIds.includes(assignment.moduleId));
-  }
-  
-  async createAssignment(insertAssignment: InsertAssignment): Promise<Assignment> {
-    const id = this.assignmentId++;
-    const assignment: Assignment = { ...insertAssignment, id };
-    this.assignments.set(id, assignment);
+    const [assignment] = await db.select().from(assignments).where(eq(assignments.id, id));
     return assignment;
   }
-  
-  async updateAssignment(id: number, data: Partial<Assignment>): Promise<Assignment | undefined> {
-    const assignment = this.assignments.get(id);
-    if (!assignment) return undefined;
+
+  async getAssignmentsByModule(moduleId: number): Promise<Assignment[]> {
+    return await db
+      .select()
+      .from(assignments)
+      .where(eq(assignments.moduleId, moduleId))
+      .orderBy(asc(assignments.dueDate));
+  }
+
+  async getAssignmentsByCourse(courseId: number): Promise<Assignment[]> {
+    const result = await db
+      .select({
+        assignment: assignments
+      })
+      .from(assignments)
+      .innerJoin(modules, eq(assignments.moduleId, modules.id))
+      .where(eq(modules.courseId, courseId))
+      .orderBy(asc(assignments.dueDate));
     
-    const updatedAssignment = { ...assignment, ...data };
-    this.assignments.set(id, updatedAssignment);
-    return updatedAssignment;
+    return result.map(r => r.assignment);
   }
-  
+
+  async createAssignment(insertAssignment: InsertAssignment): Promise<Assignment> {
+    const [assignment] = await db
+      .insert(assignments)
+      .values({
+        ...insertAssignment,
+        maxScore: insertAssignment.maxScore || 100
+      })
+      .returning();
+    
+    return assignment;
+  }
+
+  async updateAssignment(id: number, data: Partial<Assignment>): Promise<Assignment | undefined> {
+    const [updated] = await db
+      .update(assignments)
+      .set(data)
+      .where(eq(assignments.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   async deleteAssignment(id: number): Promise<boolean> {
-    return this.assignments.delete(id);
+    const result = await db.delete(assignments).where(eq(assignments.id, id));
+    return result.rowCount > 0;
   }
-  
+
   // Enrollment operations
   async getEnrollment(id: number): Promise<Enrollment | undefined> {
-    return this.enrollments.get(id);
-  }
-  
-  async getEnrollmentsByStudent(studentId: number): Promise<Enrollment[]> {
-    return Array.from(this.enrollments.values())
-      .filter(enrollment => enrollment.studentId === studentId);
-  }
-  
-  async getEnrollmentsByCourse(courseId: number, status?: string): Promise<Enrollment[]> {
-    let enrollments = Array.from(this.enrollments.values())
-      .filter(enrollment => enrollment.courseId === courseId);
-    
-    if (status) {
-      enrollments = enrollments.filter(enrollment => enrollment.status === status);
-    }
-    
-    return enrollments;
-  }
-  
-  async getEnrollmentByStudentAndCourse(studentId: number, courseId: number): Promise<Enrollment | undefined> {
-    return Array.from(this.enrollments.values())
-      .find(enrollment => 
-        enrollment.studentId === studentId && 
-        enrollment.courseId === courseId
-      );
-  }
-  
-  async createEnrollment(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
-    const id = this.enrollmentId++;
-    const enrollment: Enrollment = { 
-      ...insertEnrollment, 
-      id, 
-      requestedAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.enrollments.set(id, enrollment);
+    const [enrollment] = await db.select().from(enrollments).where(eq(enrollments.id, id));
     return enrollment;
   }
-  
-  async updateEnrollment(id: number, data: Partial<Enrollment>): Promise<Enrollment | undefined> {
-    const enrollment = this.enrollments.get(id);
-    if (!enrollment) return undefined;
+
+  async getEnrollmentsByStudent(studentId: number): Promise<Enrollment[]> {
+    return await db
+      .select()
+      .from(enrollments)
+      .where(eq(enrollments.studentId, studentId));
+  }
+
+  async getEnrollmentsByCourse(courseId: number, status?: string): Promise<Enrollment[]> {
+    let query = db
+      .select()
+      .from(enrollments)
+      .where(eq(enrollments.courseId, courseId));
     
-    const updatedEnrollment = { 
-      ...enrollment, 
-      ...data,
-      updatedAt: new Date()
-    };
-    this.enrollments.set(id, updatedEnrollment);
-    return updatedEnrollment;
+    if (status) {
+      query = query.where(eq(enrollments.status, status));
+    }
+    
+    return await query;
   }
-  
+
+  async getEnrollmentByStudentAndCourse(studentId: number, courseId: number): Promise<Enrollment | undefined> {
+    const [enrollment] = await db
+      .select()
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.studentId, studentId),
+          eq(enrollments.courseId, courseId)
+        )
+      );
+    
+    return enrollment;
+  }
+
+  async createEnrollment(insertEnrollment: InsertEnrollment): Promise<Enrollment> {
+    const now = new Date();
+    
+    const [enrollment] = await db
+      .insert(enrollments)
+      .values({
+        ...insertEnrollment,
+        status: insertEnrollment.status || 'pending',
+        requestedAt: now,
+        updatedAt: now
+      })
+      .returning();
+    
+    return enrollment;
+  }
+
+  async updateEnrollment(id: number, data: Partial<Enrollment>): Promise<Enrollment | undefined> {
+    data.updatedAt = new Date();
+    
+    const [updated] = await db
+      .update(enrollments)
+      .set(data)
+      .where(eq(enrollments.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   async deleteEnrollment(id: number): Promise<boolean> {
-    return this.enrollments.delete(id);
+    const result = await db.delete(enrollments).where(eq(enrollments.id, id));
+    return result.rowCount > 0;
   }
-  
+
   // Submission operations
   async getSubmission(id: number): Promise<Submission | undefined> {
-    return this.submissions.get(id);
-  }
-  
-  async getSubmissionsByAssignment(assignmentId: number): Promise<Submission[]> {
-    return Array.from(this.submissions.values())
-      .filter(submission => submission.assignmentId === assignmentId);
-  }
-  
-  async getSubmissionsByStudent(studentId: number): Promise<Submission[]> {
-    return Array.from(this.submissions.values())
-      .filter(submission => submission.studentId === studentId);
-  }
-  
-  async getSubmissionByStudentAndAssignment(studentId: number, assignmentId: number): Promise<Submission | undefined> {
-    return Array.from(this.submissions.values())
-      .find(submission => 
-        submission.studentId === studentId && 
-        submission.assignmentId === assignmentId
-      );
-  }
-  
-  async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
-    const id = this.submissionId++;
-    const submission: Submission = { 
-      ...insertSubmission, 
-      id, 
-      submittedAt: new Date(),
-      feedback: "",
-      graded: false 
-    };
-    this.submissions.set(id, submission);
+    const [submission] = await db.select().from(submissions).where(eq(submissions.id, id));
     return submission;
   }
-  
-  async updateSubmission(id: number, data: Partial<Submission>): Promise<Submission | undefined> {
-    const submission = this.submissions.get(id);
-    if (!submission) return undefined;
-    
-    const updatedSubmission = { ...submission, ...data };
-    this.submissions.set(id, updatedSubmission);
-    return updatedSubmission;
+
+  async getSubmissionsByAssignment(assignmentId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.assignmentId, assignmentId))
+      .orderBy(desc(submissions.submittedAt));
   }
-  
+
+  async getSubmissionsByStudent(studentId: number): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.studentId, studentId))
+      .orderBy(desc(submissions.submittedAt));
+  }
+
+  async getSubmissionByStudentAndAssignment(studentId: number, assignmentId: number): Promise<Submission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.studentId, studentId),
+          eq(submissions.assignmentId, assignmentId)
+        )
+      )
+      .orderBy(desc(submissions.submittedAt))
+      .limit(1);
+    
+    return submission;
+  }
+
+  async createSubmission(insertSubmission: InsertSubmission): Promise<Submission> {
+    const [submission] = await db
+      .insert(submissions)
+      .values({
+        ...insertSubmission,
+        submittedAt: new Date(),
+        feedback: "",
+        score: null,
+        graded: false
+      })
+      .returning();
+    
+    return submission;
+  }
+
+  async updateSubmission(id: number, data: Partial<Submission>): Promise<Submission | undefined> {
+    const [updated] = await db
+      .update(submissions)
+      .set(data)
+      .where(eq(submissions.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   // Badge operations
   async getBadge(id: number): Promise<Badge | undefined> {
-    return this.badges.get(id);
-  }
-  
-  async getBadges(): Promise<Badge[]> {
-    return Array.from(this.badges.values());
-  }
-  
-  async createBadge(insertBadge: InsertBadge): Promise<Badge> {
-    const id = this.badgeId++;
-    const badge: Badge = { ...insertBadge, id };
-    this.badges.set(id, badge);
+    const [badge] = await db.select().from(badges).where(eq(badges.id, id));
     return badge;
   }
-  
-  async updateBadge(id: number, data: Partial<Badge>): Promise<Badge | undefined> {
-    const badge = this.badges.get(id);
-    if (!badge) return undefined;
+
+  async getBadges(): Promise<Badge[]> {
+    return await db.select().from(badges);
+  }
+
+  async createBadge(insertBadge: InsertBadge): Promise<Badge> {
+    const [badge] = await db
+      .insert(badges)
+      .values(insertBadge)
+      .returning();
     
-    const updatedBadge = { ...badge, ...data };
-    this.badges.set(id, updatedBadge);
-    return updatedBadge;
+    return badge;
   }
-  
+
+  async updateBadge(id: number, data: Partial<Badge>): Promise<Badge | undefined> {
+    const [updated] = await db
+      .update(badges)
+      .set(data)
+      .where(eq(badges.id, id))
+      .returning();
+    
+    return updated;
+  }
+
   async deleteBadge(id: number): Promise<boolean> {
-    return this.badges.delete(id);
+    const result = await db.delete(badges).where(eq(badges.id, id));
+    return result.rowCount > 0;
   }
-  
+
   // User Badge operations
   async getUserBadges(userId: number): Promise<{ badge: Badge, userBadge: UserBadge }[]> {
-    const userBadges = Array.from(this.userBadges.values())
-      .filter(userBadge => userBadge.userId === userId);
+    const results = await db
+      .select({
+        badge: badges,
+        userBadge: userBadges
+      })
+      .from(userBadges)
+      .innerJoin(badges, eq(userBadges.badgeId, badges.id))
+      .where(eq(userBadges.userId, userId));
     
-    return userBadges.map(userBadge => {
-      const badge = this.badges.get(userBadge.badgeId)!;
-      return { badge, userBadge };
-    }).filter(item => item.badge !== undefined);
+    return results;
   }
-  
+
   async awardBadge(insertUserBadge: InsertUserBadge): Promise<UserBadge> {
-    const id = this.userBadgeId++;
-    const userBadge: UserBadge = { 
-      ...insertUserBadge, 
-      id, 
-      awardedAt: new Date() 
-    };
-    this.userBadges.set(id, userBadge);
+    const [userBadge] = await db
+      .insert(userBadges)
+      .values({
+        ...insertUserBadge,
+        awardedAt: new Date()
+      })
+      .returning();
+    
     return userBadge;
   }
-  
+
   // Analytics
   async getStudentProgress(studentId: number): Promise<any> {
-    const enrollments = await this.getEnrollmentsByStudent(studentId);
-    const activeEnrollments = enrollments.filter(e => e.status === 'active');
-    const submissions = await this.getSubmissionsByStudent(studentId);
-    const userBadges = await this.getUserBadges(studentId);
-    
-    let courseProgress: { [key: number]: number } = {};
-    
-    for (const enrollment of activeEnrollments) {
-      const courseId = enrollment.courseId;
-      const course = await this.getCourse(courseId);
-      if (!course) continue;
-      
-      const assignments = await this.getAssignmentsByCourse(courseId);
-      if (assignments.length === 0) {
-        courseProgress[courseId] = 100; // No assignments means 100% complete
-        continue;
-      }
-      
-      const submittedAssignments = submissions.filter(s => {
-        const assignment = this.assignments.get(s.assignmentId);
-        return assignment && assignments.some(a => a.id === assignment.id);
-      });
-      
-      courseProgress[courseId] = Math.round((submittedAssignments.length / assignments.length) * 100);
-    }
-    
-    const totalCourses = activeEnrollments.length;
-    const completedCourses = enrollments.filter(e => e.status === 'completed').length;
-    const pendingAssignments = Array.from(this.assignments.values())
-      .filter(assignment => {
-        const module = this.modules.get(assignment.moduleId);
-        if (!module) return false;
-        
-        return activeEnrollments.some(e => e.courseId === module.courseId) && 
-          !submissions.some(s => s.assignmentId === assignment.id);
-      });
-    
+    // Get completed assignments
+    const completedAssignments = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.studentId, studentId),
+          eq(submissions.graded, true)
+        )
+      );
+
+    // Get total number of courses enrolled
+    const coursesEnrolled = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.studentId, studentId),
+          eq(enrollments.status, 'approved')
+        )
+      );
+
+    // Get average score
+    const averageScore = await db
+      .select({
+        average: sql<number>`COALESCE(AVG(${submissions.score}), 0)::float`
+      })
+      .from(submissions)
+      .where(
+        and(
+          eq(submissions.studentId, studentId),
+          eq(submissions.graded, true),
+          sql`${submissions.score} IS NOT NULL`
+        )
+      );
+
+    // Get badges earned
+    const badgesEarned = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(userBadges)
+      .where(eq(userBadges.userId, studentId));
+
     return {
-      totalCourses,
-      completedCourses,
-      activeEnrollments: activeEnrollments.length,
-      pendingAssignments: pendingAssignments.length,
-      badgesEarned: userBadges.length,
-      courseProgress
+      assignmentsCompleted: completedAssignments[0]?.count || 0,
+      coursesEnrolled: coursesEnrolled[0]?.count || 0,
+      averageScore: averageScore[0]?.average || 0,
+      badgesEarned: badgesEarned[0]?.count || 0
     };
   }
-  
+
   async getTutorAnalytics(tutorId: number): Promise<any> {
-    const tutorCourses = await this.getCourses({ tutorId });
-    const courseIds = tutorCourses.map(course => course.id);
-    
-    let courseEnrollments: { [key: number]: Enrollment[] } = {};
-    let courseSubmissions: { [key: number]: Submission[] } = {};
-    
-    for (const courseId of courseIds) {
-      courseEnrollments[courseId] = await this.getEnrollmentsByCourse(courseId);
-      
-      const assignments = await this.getAssignmentsByCourse(courseId);
-      const assignmentIds = assignments.map(a => a.id);
-      
-      courseSubmissions[courseId] = Array.from(this.submissions.values())
-        .filter(s => assignmentIds.includes(s.assignmentId));
+    // Get total courses created
+    const totalCourses = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(courses)
+      .where(eq(courses.tutorId, tutorId));
+
+    // Get total enrollments across all courses
+    const courseIds = await db
+      .select({ id: courses.id })
+      .from(courses)
+      .where(eq(courses.tutorId, tutorId));
+
+    const courseIdArray = courseIds.map(c => c.id);
+
+    let totalEnrollments = 0;
+    let pendingEnrollments = 0;
+
+    if (courseIdArray.length > 0) {
+      // Get total enrollments
+      const enrollmentCounts = await db
+        .select({
+          count: sql<number>`cast(count(*) as integer)`
+        })
+        .from(enrollments)
+        .where(sql`${enrollments.courseId} IN (${courseIdArray.join(',')})`);
+
+      totalEnrollments = enrollmentCounts[0]?.count || 0;
+
+      // Get pending enrollments
+      const pendingCounts = await db
+        .select({
+          count: sql<number>`cast(count(*) as integer)`
+        })
+        .from(enrollments)
+        .where(
+          and(
+            sql`${enrollments.courseId} IN (${courseIdArray.join(',')})`,
+            eq(enrollments.status, 'pending')
+          )
+        );
+
+      pendingEnrollments = pendingCounts[0]?.count || 0;
     }
-    
+
     return {
-      totalCourses: tutorCourses.length,
-      publishedCourses: tutorCourses.filter(c => c.published).length,
-      totalStudents: new Set(
-        Object.values(courseEnrollments)
-          .flat()
-          .filter(e => e.status === 'active')
-          .map(e => e.studentId)
-      ).size,
-      totalEnrollments: Object.values(courseEnrollments).flat().length,
-      activeEnrollments: Object.values(courseEnrollments)
-        .flat()
-        .filter(e => e.status === 'active').length,
-      pendingEnrollments: Object.values(courseEnrollments)
-        .flat()
-        .filter(e => e.status === 'pending').length,
-      totalSubmissions: Object.values(courseSubmissions).flat().length,
-      gradedSubmissions: Object.values(courseSubmissions)
-        .flat()
-        .filter(s => s.graded).length,
-      courseStatistics: tutorCourses.map(course => ({
-        id: course.id,
-        title: course.title,
-        enrollments: courseEnrollments[course.id]?.length || 0,
-        activeStudents: courseEnrollments[course.id]?.filter(e => e.status === 'active').length || 0,
-        submissions: courseSubmissions[course.id]?.length || 0
-      }))
+      totalCourses: totalCourses[0]?.count || 0,
+      totalEnrollments,
+      pendingEnrollments,
+      averageEnrollmentsPerCourse: totalCourses[0]?.count ? 
+        (totalEnrollments / totalCourses[0]?.count) : 0
     };
   }
-  
+
   async getAdminAnalytics(): Promise<any> {
-    const users = await this.getUsers();
-    const courses = await this.getCourses();
-    const enrollments = Array.from(this.enrollments.values());
-    const submissions = Array.from(this.submissions.values());
-    const badges = await this.getBadges();
-    const userBadges = Array.from(this.userBadges.values());
-    
+    // Total users
+    const totalUsers = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(users);
+
+    // Users by role
+    const studentCount = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(users)
+      .where(eq(users.role, 'student'));
+
+    const tutorCount = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(users)
+      .where(eq(users.role, 'tutor'));
+
+    const adminCount = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(users)
+      .where(eq(users.role, 'admin'));
+
+    // Total courses
+    const totalCourses = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(courses);
+
+    // Published courses
+    const publishedCourses = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(courses)
+      .where(eq(courses.published, true));
+
+    // Total enrollments
+    const totalEnrollments = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(enrollments);
+
+    // Active enrollments
+    const activeEnrollments = await db
+      .select({
+        count: sql<number>`cast(count(*) as integer)`
+      })
+      .from(enrollments)
+      .where(eq(enrollments.status, 'approved'));
+
     return {
-      userStats: {
-        total: users.length,
-        students: users.filter(u => u.role === 'student').length,
-        tutors: users.filter(u => u.role === 'tutor').length,
-        admins: users.filter(u => u.role === 'admin').length
+      totalUsers: totalUsers[0]?.count || 0,
+      usersByRole: {
+        students: studentCount[0]?.count || 0,
+        tutors: tutorCount[0]?.count || 0,
+        admins: adminCount[0]?.count || 0
       },
-      courseStats: {
-        total: courses.length,
-        published: courses.filter(c => c.published).length,
-        drafts: courses.filter(c => !c.published).length
-      },
-      enrollmentStats: {
-        total: enrollments.length,
-        active: enrollments.filter(e => e.status === 'active').length,
-        pending: enrollments.filter(e => e.status === 'pending').length,
-        completed: enrollments.filter(e => e.status === 'completed').length,
-        rejected: enrollments.filter(e => e.status === 'rejected').length
-      },
-      submissionStats: {
-        total: submissions.length,
-        graded: submissions.filter(s => s.graded).length,
-        ungraded: submissions.filter(s => !s.graded).length
-      },
-      badgeStats: {
-        total: badges.length,
-        awarded: userBadges.length
-      }
+      totalCourses: totalCourses[0]?.count || 0,
+      publishedCourses: publishedCourses[0]?.count || 0,
+      totalEnrollments: totalEnrollments[0]?.count || 0,
+      activeEnrollments: activeEnrollments[0]?.count || 0
     };
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
