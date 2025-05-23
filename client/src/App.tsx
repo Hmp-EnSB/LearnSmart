@@ -12,6 +12,7 @@ import { useLocation } from "wouter";
 import NotFound from "@/pages/not-found";
 import TOTPVerify from "@/components/auth/TOTPVerify";
 import Register from "@/pages/Register";
+import WelcomePage from "./pages/WelcomePage";
 import RoleRedirector from "@/components/RoleRedirector";
 
 // Student pages
@@ -162,11 +163,12 @@ function AppRouter() {
   return (
     <Switch>
       {/* Public routes */}
+      <Route path="/" component={WelcomePage} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
       
       {/* Role-specific dashboards */}
-      <PrivateRoute path="/" component={RoleRedirector} />
+      <PrivateRoute path="/dashboard" component={RoleRedirector} />
       
       {/* Student routes */}
       <PrivateRoute path="/student/dashboard" component={StudentDashboard} roles={['student']} />
