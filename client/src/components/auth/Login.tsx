@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../../App';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLocation } from 'wouter';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
