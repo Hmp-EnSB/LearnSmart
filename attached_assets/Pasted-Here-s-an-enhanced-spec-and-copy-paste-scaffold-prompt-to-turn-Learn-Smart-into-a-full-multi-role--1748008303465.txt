@@ -1,0 +1,462 @@
+Here’s an enhanced spec and copy-&-paste scaffold prompt to turn Learn Smart into a full multi-role LMS—with Students, Tutors and Admins, meaningful workflows (no arbitrary IDs), and rich course/assignment management.
+
+✨ New Roles & Workflows
+Student
+
+Browses catalog of Tutor-created courses
+
+Enrolls in courses and views active assignments
+
+Submits work; sees feedback & badge awards
+
+Tutor
+
+Creates and publishes courses, modules and assignments
+
+Manages enrollment requests (approve/decline)
+
+Reviews student submissions and issues grades or feedback
+
+Monitors cohort progress and issues achievement badges
+
+Admin
+
+Manages all user accounts and role assignments
+
+Oversees platform metrics (total courses, active tutors, completion rates)
+
+Configures global settings: badge definitions, notification templates, offline sync policies
+
+🔧 Enhanced Data Models
+python
+Copy
+Edit
+class User(AbstractUser):
+ROLE_CHOICES = [
+('student','Student'),
+('tutor','Tutor'),
+('admin','Admin'),
+]
+role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+class Course(models.Model):
+title = CharField(max_length=200)
+description = TextField()
+tutor = ForeignKey(User, limit_choices_to={'role':'tutor'}, related_name='courses')
+published = BooleanField(default=False)
+created_at = DateTimeField(auto_now_add=True)
+
+class Module(models.Model):
+course = ForeignKey(Course, related_name='modules')
+title = CharField(max_length=200)
+content = TextField()
+
+class Assignment(models.Model):
+module = ForeignKey(Module, related_name='assignments')
+title = CharField(max_length=200)
+description = TextField()
+due_date = DateTimeField()
+
+class Enrollment(models.Model):
+student = ForeignKey(User, limit_choices_to={'role':'student'}, related_name='enrollments')
+course = ForeignKey(Course, related_name='enrollments')
+status = CharField(choices=[('pending','Pending'),('active','Active'),('completed','Completed')], default='pending')
+requested_at = DateTimeField(auto_now_add=True)
+
+class Submission(models.Model):
+assignment = ForeignKey(Assignment, related_name='submissions')
+student = ForeignKey(User, related_name='submissions')
+content = TextField()
+submitted_at = DateTimeField(auto_now_add=True)
+feedback = TextField(blank=True)
+graded = BooleanField(default=False)
+
+class Badge(models.Model):
+name = CharField(max_length=100)
+description = TextField()
+criteria = JSONField()   # e.g. {"complete_course": course_id}
+🔌 Key API Endpoints
+Auth & Roles
+
+POST /api/auth/login/ → credentials + TOTP → JWT + role
+
+Courses & Modules
+
+GET /api/courses/ → all published courses
+
+POST /api/courses/ → tutor creates course
+
+PUT /api/courses/{slug}/publish/ → tutor toggles publish
+
+GET /api/courses/{slug}/modules/, POST /api/courses/{slug}/modules/
+
+Enrollment
+
+POST /api/courses/{slug}/enroll/ → student requests enrollment
+
+GET /api/enrollments/ → tutor sees pending → tutor approves → status becomes “active”
+
+Assignments & Submissions
+
+POST /api/modules/{id}/assignments/ → tutor adds assignment
+
+GET /api/assignments/{id}/ → student views details
+
+POST /api/assignments/{id}/submit/ → student submits work
+
+GET /api/submissions/{assignment_id}/ → tutor reviews & marks graded
+
+Analytics & Badges
+
+GET /api/analytics/student/ → progress, badges
+
+GET /api/analytics/tutor/ → cohort heatmaps, completion rates
+
+GET /api/analytics/admin/ → global platform stats
+
+🖥️ Frontend Structure (React)
+cpp
+Copy
+Edit
+src/
+├── auth/
+│   ├── Login.jsx
+│   ├── TOTPVerify.jsx
+│   └── AuthContext.js
+│
+├── features/
+│   ├── courses/
+│   │   ├── CourseList.jsx
+│   │   ├── CourseEditor.jsx
+│   │   ├── ModuleEditor.jsx
+│   │   └── CourseDetail.jsx
+│   │
+│   ├── enrollments/
+│   │   └── EnrollmentRequests.jsx
+│   │
+│   ├── assignments/
+│   │   ├── AssignmentForm.jsx
+│   │   └── SubmissionReview.jsx
+│   │
+│   └── analytics/
+│       ├── StudentAnalytics.jsx
+│       ├── TutorAnalytics.jsx
+│       └── AdminDashboard.jsx
+│
+├── components/
+│   ├── BadgeDisplay.jsx
+│   ├── ProgressBar.jsx
+│   └── NotificationToast.jsx
+│
+└── utils/
+├── api.js           // Axios + JWT interceptor
+├── offline.js       // IndexedDB sync logic
+└── roles.js         // Route guards & redirects
+🚦 Role-Based Routing Snippet
+jsx
+Copy
+Edit
+function RoleRedirector() {
+const { user } = useAuth();
+if (user.role === 'student') return ;
+if (user.role === 'tutor')   return ;
+if (user.role === 'admin')   return ;
+return null;
+}
+📋 Paste-Into-Your-Code-Builder
+markdown
+Copy
+Edit
+
+Learn Smart – Full Multi-Auth LMS ## Goals
+Three roles: Student, Tutor, Admin
+No arbitrary numeric IDs exposed in UI or APIs
+Meaningful workflows: course creation, enrollment approval, assignment submission & review, badge awards
+Offline support with IndexedDB + auto sync
+Two-factor authentication (password + TOTP)
+
+Models & Relationships
+Define User(role), Course → Module → Assignment, Enrollment(status workflow), Submission(feedback + graded flag), Badge(criteria JSON).
+
+Endpoints
+Auth: /api/auth/login/, /api/auth/verify-totp/
+Courses & Modules: CRUD + publish toggle
+Enrollment: request → approve → active
+Assignments: create → submit → review
+Analytics per role
+
+Frontend
+React Router routes per role
+Context for auth + offline sync
+Feature folders: courses, enrollments, assignments, analytics
+Shared components: ProgressBar, BadgeDisplay, NotificationToast
+
+Role Routing
+Use a  after login to send users to their dashboard.
+
+Let the builder scaffold models, serializers, views, React pages, route guards and IndexedDB logic—delivering a full, production-rea Below is a fully fleshed-out spec for Learn Smart, with complete data models, serializers, viewsets, endpoint contracts, React component stubs, workflow diagrams in text form, and offline-sync logic—so you can copy-paste straight into your code builder.
+
+Data Model & State Workflows 1.1 Models & Fields python Copy Edit from django.db import models from django.contrib.auth.models import AbstractUser from django.utils.text import slugify from django.contrib.postgres.fields import JSONField
+class User(AbstractUser):
+ROLE_CHOICES = [
+('student','Student'),
+('tutor','Tutor'),
+('admin','Admin'),
+]
+role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+
+class Course(models.Model):
+title       = models.CharField(max_length=200)
+slug        = models.SlugField(max_length=200, unique=True, blank=True)
+description = models.TextField()
+tutor       = models.ForeignKey(User, limit_choices_to={'role':'tutor'}, related_name='courses', on_delete=models.CASCADE)
+published   = models.BooleanField(default=False)
+created_at  = models.DateTimeField(auto_now_add=True)
+
+def save(self, *args, **kwargs):
+if not self.slug:
+self.slug = slugify(self.title)
+super().save(*args, **kwargs)
+class Module(models.Model):
+course      = models.ForeignKey(Course, related_name='modules', on_delete=models.CASCADE)
+title       = models.CharField(max_length=200)
+content     = models.TextField()
+order       = models.PositiveIntegerField(default=0)
+
+class Meta:
+ordering = ['order']
+class Assignment(models.Model):
+module      = models.ForeignKey(Module, related_name='assignments', on_delete=models.CASCADE)
+title       = models.CharField(max_length=200)
+description = models.TextField()
+due_date    = models.DateTimeField()
+max_score   = models.PositiveIntegerField(default=100)
+
+class Enrollment(models.Model):
+STATUS_CHOICES = [
+('pending','Pending'),
+('active','Active'),
+('completed','Completed'),
+('rejected','Rejected'),
+]
+student     = models.ForeignKey(User, limit_choices_to={'role':'student'}, related_name='enrollments', on_delete=models.CASCADE)
+course      = models.ForeignKey(Course, related_name='enrollments', on_delete=models.CASCADE)
+status      = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+requested_at= models.DateTimeField(auto_now_add=True)
+updated_at  = models.DateTimeField(auto_now=True)
+
+class Submission(models.Model):
+assignment  = models.ForeignKey(Assignment, related_name='submissions', on_delete=models.CASCADE)
+student     = models.ForeignKey(User, related_name='submissions', on_delete=models.CASCADE)
+content     = models.TextField()
+submitted_at= models.DateTimeField(auto_now_add=True)
+feedback    = models.TextField(blank=True)
+score       = models.PositiveIntegerField(null=True, blank=True)
+graded      = models.BooleanField(default=False)
+
+class Badge(models.Model):
+name        = models.CharField(max_length=100)
+description = models.TextField()
+icon_url    = models.URLField()
+criteria    = JSONField()   # e.g. {"type":"complete_course","course_slug":"intro-to-python"}
+1.2 State Transitions
+Enrollment Workflow
+
+Student POSTs to /api/courses/{slug}/enroll/ → status='pending'
+
+Tutor GETs pending via /api/enrollments/?course=slug&status=pending/ → PUT /api/enrollments/{id}/ with status='active' or 'rejected'
+
+Frontend moves student to course home on 'active'.
+
+Assignment Submission → Grading
+
+Student GETs assignments list for active course modules.
+
+Student POSTs to /api/assignments/{id}/submit/ → creates Submission.
+
+Tutor retrieves via /api/submissions/?assignment=id → PUT /api/submissions/{id}/ with feedback, score, and graded=true.
+
+Frontend shows feedback immediately.
+
+Badge Awarding
+
+On enrollment completion or assignment grading, a Django signal checks Badge.criteria and issues badges to User.badges (ManyToMany if you like).
+
+DRF Serializers & ViewSets python Copy Edit from rest_framework import serializers, viewsets, permissions, status from rest_framework.decorators import action from rest_framework.response import Response
+class CourseSerializer(serializers.ModelSerializer):
+tutor = serializers.StringRelatedField()
+class Meta:
+model = Course
+fields = 'all'
+read_only_fields = ['slug','tutor','created_at']
+
+class ModuleSerializer(serializers.ModelSerializer):
+class Meta:
+model = Module
+fields = 'all'
+read_only_fields = ['id','course']
+
+class AssignmentSerializer(serializers.ModelSerializer):
+class Meta:
+model = Assignment
+fields = 'all'
+
+class EnrollmentSerializer(serializers.ModelSerializer):
+class Meta:
+model = Enrollment
+fields = 'all'
+read_only_fields = ['student','requested_at','updated_at']
+
+class SubmissionSerializer(serializers.ModelSerializer):
+class Meta:
+model = Submission
+fields = 'all'
+read_only_fields = ['student','submitted_at','graded','score','feedback']
+
+class CourseViewSet(viewsets.ModelViewSet):
+queryset = Course.objects.all()
+serializer_class = CourseSerializer
+permission_classes = [permissions.IsAuthenticated]
+
+def perform_create(self, serializer):
+serializer.save(tutor=self.request.user)
+
+@action(detail=True, methods=['post'], url_path='enroll', permission_classes=[permissions.IsAuthenticated])
+def enroll(self, request, pk=None):
+course = self.get_object()
+enrollment, created = Enrollment.objects.get_or_create(course=course, student=request.user)
+if not created:
+return Response({'detail':'Already requested.'}, status=status.HTTP_400_BAD_REQUEST)
+return Response(EnrollmentSerializer(enrollment).data, status=status.HTTP_201_CREATED)
+Repeat similar viewsets for Modules, Assignments, Submissions, and an EnrollmentViewSet that allows tutors to filter/update statuses.
+
+API Endpoint Contracts
+Endpoint	Method	Request Body	Response Body	Permissions
+/api/auth/login/	POST	{ email, password }	{ temp_token }	AllowAny
+/api/auth/verify-totp/	POST	{ temp_token, totp_code }	{ token, user: { id, role }}	AllowAny
+/api/courses/	GET	—	[Course]	Authenticated
+/api/courses/	POST	{ title, description }	Course	role=='tutor'
+/api/courses/{slug}/publish/	PUT	{ published: true/false }	Course	role=='tutor'
+/api/courses/{slug}/enroll/	POST	—	Enrollment	role=='student'
+/api/enrollments/?course=slug&status=pending	GET	—	[Enrollment]	role=='tutor'
+/api/enrollments/{id}/	PUT	{ status: 'active'	'rejected' }	Enrollment
+/api/modules/?course=slug	GET	—	[Module]	Authenticated
+/api/modules/	POST	{ course, title, content, order }	Module	role=='tutor'
+/api/assignments/?module=id	GET	—	[Assignment]	Authenticated
+/api/assignments/	POST	{ module, title, description, due_date }	Assignment	role=='tutor'
+/api/assignments/{id}/submit/	POST	{ content }	Submission	role=='student'
+/api/submissions/?assignment=id	GET	—	[Submission]	role=='tutor'
+/api/submissions/{id}/	PUT	{ feedback, score, graded:true }	Submission	role=='tutor'
+/api/analytics/student/	GET	—	{ progress:, badges: }	role=='student'
+/api/analytics/tutor/	GET	—	{ cohort_heatmap:, avg_time: }	role=='tutor'
+/api/analytics/admin/	GET	—	{ global_stats: }	role=='admin'
+
+React Frontend Components & Routing
+Auth Flow
+
+Login.jsx → POST /api/auth/login/, store temp_token, route → 
+
+TOTPVerify.jsx → POST /api/auth/verify-totp/, store JWT + user, redirect via 
+
+Route Configuration
+
+jsx
+Copy
+Edit
+// App.jsx
+
+
+<Route path="/login" element={} />
+<Route path="/verify-totp" element={} />
+<Route path="/app/*" element={
+
+
+
+}/>
+
+
+RoleRedirector & Guards
+
+jsx
+Copy
+Edit
+function RoleRedirector() {
+const { user } = useAuth(); // { id, role, token }
+switch(user.role) {
+case 'student': return ;
+case 'tutor':   return ;
+case 'admin':   return ;
+default:        return null;
+}
+}
+Key Pages & Components
+
+less
+Copy
+Edit
+src/
+├── pages/
+│   ├── student/
+│   │   ├── CourseCatalog.jsx      // GET /api/courses/
+│   │   ├── MyCourses.jsx          // GET /api/enrollments/?student
+│   │   └── AssignmentSubmit.jsx   // POST /submit
+│   │
+│   ├── tutor/
+│   │   ├── Dashboard.jsx          // pending enrollments + stats
+│   │   ├── CourseEditor.jsx       // create/publish
+│   │   └── SubmissionReview.jsx   // grade submissions
+│   │
+│   └── admin/
+│       └── Overview.jsx           // global stats + user mgmt
+├── components/
+│   ├── ProgressBar.jsx
+│   ├── Badge.jsx
+│   ├── EnrollmentList.jsx
+│   └── Notification.jsx
+└── utils/
+├── api.js     // axios + JWT interceptor
+├── offline.js // idb-sync logic
+└── roles.js   // HOCs for role protection
+5. Offline Sync Logic (IndexedDB)
+Cache Data: On every GET, write to IndexedDB (courses, modules, assignments).
+
+Queue Writes: On POST/PUT when offline, enqueue operations in a “pendingOps” store.
+
+Sync Daemon: On navigator.onLine event, drain pendingOps in sequence, retry on failure.
+
+Conflict Handling: Use updated_at timestamps; if server version is newer, alert the user.
+
+5.1 Sample offline.js
+js
+Copy
+Edit
+import { openDB } from 'idb';
+
+const DB_NAME = 'learn-smart-db';
+const STORE_CACHE = 'cache';
+const STORE_OPS   = 'pendingOps';
+
+async function initDB() {
+return openDB(DB_NAME, 1, {
+upgrade(db) {
+db.createObjectStore(STORE_CACHE);
+db.createObjectStore(STORE_OPS, { autoIncrement: true });
+}
+});
+}
+
+// cache read/write, enqueueOps, and sync logic here…
+
+Complete Django models + migrations
+
+DRF serializers & viewsets
+
+Precise endpoint contracts with permissions
+
+React pages/components + routing + guards
+
+Offline-first sync architecture
+
+You’ll be ready to ship a production-grade multi-role LMS in no time.
+
+with modern design
