@@ -1,0 +1,507 @@
+
+
+
+Context
+— none fetched
+Enhanced Welcome Page Design for Adaptive Learning Platform
+I'll create a professional, modern welcome page design with minimal text, animations, and a single "Get Started" button that supports role-based redirection after login.
+
+React Component Implementation
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import './WelcomePage.css';
+
+const WelcomePage = () => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleGetStarted = () => {
+    navigate('/login');
+  };
+
+  return (
+    <div className="welcome-container">
+      {isLoading ? (
+        <motion.div 
+          className="loading-container"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            className="loading-logo"
+            animate={{ 
+              scale: [1, 1.2, 1],
+              rotate: [0, 180, 360]
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatType: "loop"
+            }}
+          >
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <motion.path
+                d="M50 10 L90 90 L10 90 Z"
+                fill="none"
+                stroke="#6366F1"
+                strokeWidth="5"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+            </svg>
+          </motion.div>
+        </motion.div>
+      ) : (
+        <motion.div 
+          className="content-container"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          <motion.div 
+            className="hero-section"
+            initial={{ y: 50 }}
+            animate={{ y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.h1 
+              className="title"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+            >
+              Adaptive Learning
+            </motion.h1>
+            
+            <motion.p 
+              className="subtitle"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.8 }}
+            >
+              Personalized education powered by AI
+            </motion.p>
+            
+            <motion.div 
+              className="button-container"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.9, duration: 0.5 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <button className="get-started-btn" onClick={handleGetStarted}>
+                Get Started
+                <motion.span 
+                  className="btn-arrow"
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                >
+                  →
+                </motion.span>
+              </button>
+            </motion.div>
+          </motion.div>
+          
+          <motion.div 
+            className="floating-elements"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.8 }}
+          >
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                className={`floating-element element-${i + 1}`}
+                animate={{
+                  y: [0, -15, 0],
+                  rotate: [0, i % 2 === 0 ? 5 : -5, 0]
+                }}
+                transition={{
+                  duration: 3 + i,
+                  repeat: Infinity,
+                  repeatType: "reverse",
+                  ease: "easeInOut",
+                  delay: i * 0.2
+                }}
+              />
+            ))}
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+export default WelcomePage;
+
+Copy
+WelcomePage.jsx
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');
+
+:root {
+  --primary-color: #6366F1;
+  --primary-light: #818CF8;
+  --primary-dark: #4F46E5;
+  --secondary-color: #10B981;
+  --text-color: #1F2937;
+  --light-text: #6B7280;
+  --background: #F9FAFB;
+  --white: #FFFFFF;
+  --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  color: var(--text-color);
+}
+
+.welcome-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+}
+
+.loading-logo {
+  width: 100px;
+  height: 100px;
+}
+
+.content-container {
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 2rem;
+  z-index: 10;
+  position: relative;
+}
+
+.hero-section {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 4.5rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 1rem;
+  background: linear-gradient(90deg, var(--primary-dark), var(--secondary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--light-text);
+  margin-bottom: 3rem;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.button-container {
+  margin-top: 2rem;
+}
+
+.get-started-btn {
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+  color: var(--white);
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  padding: 1rem 2.5rem;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.get-started-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.get-started-btn:focus {
+  outline: none;
+}
+
+.btn-arrow {
+  margin-left: 10px;
+  font-size: 1.4rem;
+}
+
+.floating-elements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.floating-element {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+}
+
+.element-1 {
+  width: 150px;
+  height: 150px;
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+  top: 15%;
+  left: 10%;
+  filter: blur(30px);
+}
+
+.element-2 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, var(--secondary-color), #34D399);
+  bottom: 10%;
+  right: 15%;
+  filter: blur(40px);
+}
+
+.element-3 {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #F59E0B, #FBBF24);
+  top: 30%;
+  right: 20%;
+  filter: blur(25px);
+}
+
+.element-4 {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #EC4899, #F472B6);
+  bottom: 25%;
+  left: 20%;
+  filter: blur(30px);
+}
+
+.element-5 {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #8B5CF6, #A78BFA);
+  top: 60%;
+  left: 50%;
+  filter: blur(20px);
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: 3rem;
+  }
+  
+  .subtitle {
+    font-size: 1.2rem;
+  }
+  
+  .get-started-btn {
+    font-size: 1rem;
+    padding: 0.8rem 2rem;
+  }
+  
+  .floating-element {
+    transform: scale(0.7);
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 2.5rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+  
+  .floating-element {
+    transform: scale(0.5);
+  }
+}
+
+Copy
+WelcomePage.css
+App.js Integration
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import WelcomePage from './components/WelcomePage';
+import Login from './components/auth/Login';
+import StudentDashboard from './components/dashboards/StudentDashboard';
+import TeacherDashboard from './components/dashboards/TeacherDashboard';
+import AdminDashboard from './components/dashboards/AdminDashboard';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<WelcomePage />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected routes with role-based redirection */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute>
+              {/* This component will handle role-based redirection */}
+              <RoleBasedRedirect />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/student-dashboard" 
+          element={
+            <ProtectedRoute requiredRole="student">
+              <StudentDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/teacher-dashboard" 
+          element={
+            <ProtectedRoute requiredRole="teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedRoute requiredRole="admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+    </Router>
+  );
+}
+
+// Component to handle role-based redirection
+const RoleBasedRedirect = () => {
+  // Get user role from context or state management
+  const userRole = localStorage.getItem('userRole');
+  
+  switch(userRole) {
+    case 'student':
+      return <Navigate to="/student-dashboard" replace />;
+    case 'teacher':
+      return <Navigate to="/teacher-dashboard" replace />;
+    case 'admin':
+      return <Navigate to="/admin-dashboard" replace />;
+    default:
+      return <Navigate to="/login" replace />;
+  }
+};
+
+export default App;
+
+Copy
+App.js
+Protected Route Component
+import React, { useEffect, useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import axios from 'axios';
+
+const ProtectedRoute = ({ children, requiredRole }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        // Check authentication with Django backend
+        const response = await axios.get('/api/auth/verify/', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
+        });
+        
+        if (response.data.authenticated) {
+          setIsAuthenticated(true);
+          setUserRole(response.data.role);
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch (error) {
+        console.error('Authentication verification failed:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    verifyAuth();
+  }, []);
+
+  if (isLoading) {
+    // You could use a loading spinner here
+    return <div className="loading-auth">Verifying authentication...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // If a specific role is required and user doesn't have it
+  if (requiredRole && userRole !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
+
+export default ProtectedRoute;
+
+Copy
