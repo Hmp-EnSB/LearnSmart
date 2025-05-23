@@ -79,10 +79,40 @@ export default {
             height: "0",
           },
         },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        },
+        "fade-in": {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        "fade-in-delay": {
+          '0%, 40%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        "fade-in-delay-2": {
+          '0%, 60%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        "fade-in-delay-3": {
+          '0%, 70%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        "fade-in-delay-4": {
+          '0%, 80%': { opacity: '0' },
+          '100%': { opacity: '1' }
+        }
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "float": "float 6s ease-in-out infinite",
+        "fade-in": "fade-in 0.8s ease-out forwards",
+        "fade-in-delay": "fade-in-delay 1.2s ease-out forwards",
+        "fade-in-delay-2": "fade-in-delay-2 1.6s ease-out forwards",
+        "fade-in-delay-3": "fade-in-delay-3 1.8s ease-out forwards",
+        "fade-in-delay-4": "fade-in-delay-4 2.2s ease-out forwards"
       },
     },
   },
