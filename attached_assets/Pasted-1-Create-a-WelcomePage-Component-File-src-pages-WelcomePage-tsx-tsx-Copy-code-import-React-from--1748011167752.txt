@@ -1,0 +1,141 @@
+1. Create a WelcomePage Component
+File: src/pages/WelcomePage.tsx
+
+tsx
+Copy code
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+
+export default function WelcomePage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 text-white">
+      <div className="m-auto text-center max-w-lg p-8">
+        <h1 className="text-5xl font-bold mb-4">Welcome to Learn Smart</h1>
+        <p className="text-lg mb-8">
+          Unlock personalized learning paths, collaborate in study circles, earn badges, and more.
+        </p>
+        <button
+          onClick={() => navigate('/auth')}
+          className="px-8 py-3 bg-white text-indigo-600 rounded-full font-semibold hover:bg-gray-100 transition"
+        >
+          Get Started
+        </button>
+      </div>
+    </div>
+  );
+}
+Styling notes:
+
+A full‐screen gradient gives a modern look.
+
+Centered card with bold headline and a single call-to-action.
+
+2. Consolidate Login & Register Under /auth
+Since you already have multi-auth in your Login and Register forms, let’s group them under an /auth parent with two tabs or links.
+
+2.1 Create an AuthLanding Component
+File: src/pages/AuthLanding.tsx
+
+tsx
+Copy code
+import React, { useState } from 'react';
+import Login from '../auth/Login';
+import Register from '../auth/Register';
+
+export default function AuthLanding() {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setMode('login')}
+            className={`px-4 py-2 ${mode === 'login' ? 'border-b-2 border-indigo-600' : 'text-gray-500'}`}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => setMode('register')}
+            className={`ml-4 px-4 py-2 ${mode === 'register' ? 'border-b-2 border-indigo-600' : 'text-gray-500'}`}
+          >
+            Sign Up
+          </button>
+        </div>
+        {mode === 'login' ? <Login /> : <Register />}
+      </div>
+    </div>
+  );
+}
+This lets users toggle between Login and Register—both of which already support the role dropdown.
+
+3. Update Your Router in App.tsx
+Add three top-level routes:
+
+/ → WelcomePage
+
+/auth → AuthLanding
+
+/app/* → Your RoleRedirector + dashboards
+
+tsx
+Copy code
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import WelcomePage from './pages/WelcomePage';
+import AuthLanding from './pages/AuthLanding';
+import RoleRedirector from './auth/RoleRedirector';
+import StudentDashboard from './pages/student/StudentDashboard';
+import TutorDashboard from './pages/tutor/TutorDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import Protected from './auth/Protected';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<WelcomePage />} />
+        <Route path="/auth" element={<AuthLanding />} />
+
+        {/* After auth, role‐based redirect */}
+        <Route path="/app" element={<RoleRedirector />} />
+
+        {/* Protected dashboards */}
+        <Route
+          path="/student/*"
+          element={
+            <Protected role="student">
+              <StudentDashboard />
+            </Protected>
+          }
+        />
+        <Route
+          path="/tutor/*"
+          element={
+            <Protected role="tutor">
+              <TutorDashboard />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/*"
+          element={
+            <Protected role="admin">
+              <AdminDashboard />
+            </Protected>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+4. Verify the Flow
+Visit / → see your new WelcomePage.
+
+Click “Get Started” → takes you to /auth.
+
+Toggle between Sign In / Sign Up, choose role in dropdown, authenticate.
+
+On success → you land on /app → then get redirected to your role’s dashboard with the navbar and views as before.
+
