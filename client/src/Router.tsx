@@ -1,10 +1,35 @@
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "./contexts/AuthContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import AppRouter from "./Router";
+import { Switch, Route } from "wouter";
+import { useAuth } from "./contexts/AuthContext";
+
+import NotFound from "@/pages/not-found";
+import Login from "@/components/auth/Login";
+import TOTPVerify from "@/components/auth/TOTPVerify";
+import Register from "@/pages/Register";
+import RoleRedirector from "@/components/RoleRedirector";
+
+// Student pages
+import StudentDashboard from "@/pages/student/Dashboard";
+import StudentCourses from "@/pages/student/Courses";
+import StudentCourseDetail from "@/pages/student/CourseDetail";
+import StudentAssignments from "@/pages/student/Assignments";
+import StudentAssignmentSubmit from "@/pages/student/AssignmentSubmit";
+import StudentProgress from "@/pages/student/Progress";
+
+// Tutor pages
+import TutorDashboard from "@/pages/tutor/Dashboard";
+import TutorCourseManagement from "@/pages/tutor/CourseManagement";
+import TutorCourseEditor from "@/pages/tutor/CourseEditor";
+import TutorEnrollmentRequests from "@/pages/tutor/EnrollmentRequests";
+import TutorAssignmentManagement from "@/pages/tutor/AssignmentManagement";
+import TutorSubmissionReview from "@/pages/tutor/SubmissionReview";
+import TutorAnalytics from "@/pages/tutor/Analytics";
+
+// Admin pages
+import AdminDashboard from "@/pages/admin/Dashboard";
+import AdminUserManagement from "@/pages/admin/UserManagement";
+import AdminCourseOverview from "@/pages/admin/CourseOverview";
+import AdminBadgeManagement from "@/pages/admin/BadgeManagement";
+import AdminSettings from "@/pages/admin/Settings";
 
 function PrivateRoute({ component: Component, roles, ...rest }: any) {
   const { isAuthenticated, user } = useAuth();
@@ -20,7 +45,7 @@ function PrivateRoute({ component: Component, roles, ...rest }: any) {
   return <Route path={rest.path} component={Component} />;
 }
 
-function Router() {
+export default function AppRouter() {
   const { isAuthenticated, isVerifying, showTOTP } = useAuth();
 
   if (isVerifying) {
@@ -70,20 +95,3 @@ function Router() {
     </Switch>
   );
 }
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <TooltipProvider>
-          <Toaster />
-          <AuthProvider>
-            <Router />
-          </AuthProvider>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
