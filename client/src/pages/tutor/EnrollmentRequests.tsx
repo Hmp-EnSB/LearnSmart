@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
-import MainLayout from '@/components/layouts/MainLayout';
-import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import MainLayout from "@/components/layouts/MainLayout";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -14,14 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  CheckCircle, 
-  XCircle, 
-  UserPlus, 
-  Clock,
-  Search,
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { CheckCircle, XCircle, UserPlus, Clock, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface Course {
   id: number;
@@ -40,135 +34,171 @@ interface Enrollment {
   id: number;
   courseId: number;
   studentId: number;
-  status: 'pending' | 'active' | 'completed' | 'rejected';
+  status: "pending" | "active" | "completed" | "rejected";
   requestedAt: string;
   updatedAt: string;
   student: Student;
-  course?: Course;
+  course: Course;
 }
 
 export default function TutorEnrollmentRequests() {
   const { toast } = useToast();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<string>('all');
-  const [enrollments, setEnrollments] = useState<{[key: string]: Enrollment[]}>({
+  const [selectedCourse, setSelectedCourse] = useState<string>("all");
+  const [enrollments, setEnrollments] = useState<{
+    [key: string]: Enrollment[];
+  }>({
     pending: [],
     active: [],
-    rejected: []
+    rejected: [],
   });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredEnrollments, setFilteredEnrollments] = useState<{[key: string]: Enrollment[]}>({
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredEnrollments, setFilteredEnrollments] = useState<{
+    [key: string]: Enrollment[];
+  }>({
     pending: [],
     active: [],
-    rejected: []
+    rejected: [],
   });
 
   // Fetch courses created by this tutor
-  const { data: coursesData, isLoading: loadingCourses } = useQuery({
-    queryKey: ['/api/courses?tutorId=me'],
+  const { data: coursesData, isLoading: loadingCourses } = useQuery<Course[]>({
+    queryKey: ["/api/courses?tutor=me"],
   });
-  
+
   // Process courses data
   useEffect(() => {
-    if (coursesData) {
+    if (coursesData && Array.isArray(coursesData)) {
       setCourses(coursesData);
     }
   }, [coursesData]);
-  
+
+  // Build the correct query key based on selected course
+  const enrollmentsQueryKey =
+    selectedCourse === "all"
+      ? "/api/enrollments?tutor=me"
+      : `/api/enrollments?tutor=me&courseId=${selectedCourse}`;
+
   // Fetch enrollments for the selected course or all courses
-  const { data: enrollmentsData, isLoading: loadingEnrollments, refetch: refetchEnrollments } = useQuery({
-    queryKey: [
-      selectedCourse === 'all' 
-        ? '/api/enrollments' 
-        : `/api/enrollments?courseId=${selectedCourse}`
-    ],
+  const {
+    data: enrollmentsData,
+    isLoading: loadingEnrollments,
+    refetch: refetchEnrollments,
+  } = useQuery<Enrollment[]>({
+    queryKey: [enrollmentsQueryKey],
   });
-  
+
   // Process enrollments data
   useEffect(() => {
-    if (enrollmentsData) {
+    if (enrollmentsData && Array.isArray(enrollmentsData)) {
       // Group enrollments by status
       const grouped = {
         pending: [] as Enrollment[],
         active: [] as Enrollment[],
-        rejected: [] as Enrollment[]
+        rejected: [] as Enrollment[],
       };
-      
+
       enrollmentsData.forEach((enrollment: Enrollment) => {
-        if (enrollment.status === 'pending') {
+        if (enrollment.status === "pending") {
           grouped.pending.push(enrollment);
-        } else if (enrollment.status === 'active' || enrollment.status === 'completed') {
+        } else if (
+          enrollment.status === "active" ||
+          enrollment.status === "completed"
+        ) {
           grouped.active.push(enrollment);
-        } else if (enrollment.status === 'rejected') {
+        } else if (enrollment.status === "rejected") {
           grouped.rejected.push(enrollment);
         }
       });
-      
+
       setEnrollments(grouped);
     }
   }, [enrollmentsData]);
-  
+
   // Filter enrollments based on search query
   useEffect(() => {
-    if (searchQuery.trim() === '') {
+    if (searchQuery.trim() === "") {
       setFilteredEnrollments(enrollments);
     } else {
       const query = searchQuery.toLowerCase();
-      
+
       const filtered = {
-        pending: enrollments.pending.filter(e => 
-          e.student.fullName.toLowerCase().includes(query) || 
-          e.student.email.toLowerCase().includes(query) ||
-          e.student.username.toLowerCase().includes(query)
+        pending: enrollments.pending.filter(
+          (e) =>
+            e.student.fullName.toLowerCase().includes(query) ||
+            e.student.email.toLowerCase().includes(query) ||
+            e.student.username.toLowerCase().includes(query),
         ),
-        active: enrollments.active.filter(e => 
-          e.student.fullName.toLowerCase().includes(query) || 
-          e.student.email.toLowerCase().includes(query) ||
-          e.student.username.toLowerCase().includes(query)
+        active: enrollments.active.filter(
+          (e) =>
+            e.student.fullName.toLowerCase().includes(query) ||
+            e.student.email.toLowerCase().includes(query) ||
+            e.student.username.toLowerCase().includes(query),
         ),
-        rejected: enrollments.rejected.filter(e => 
-          e.student.fullName.toLowerCase().includes(query) || 
-          e.student.email.toLowerCase().includes(query) ||
-          e.student.username.toLowerCase().includes(query)
-        )
+        rejected: enrollments.rejected.filter(
+          (e) =>
+            e.student.fullName.toLowerCase().includes(query) ||
+            e.student.email.toLowerCase().includes(query) ||
+            e.student.username.toLowerCase().includes(query),
+        ),
       };
-      
+
       setFilteredEnrollments(filtered);
     }
   }, [searchQuery, enrollments]);
-  
+
   // Update enrollment status mutation
   const updateEnrollmentMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number, status: string }) => {
-      await apiRequest('PUT', `/api/enrollments/${id}`, { status });
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const response = await fetch(`/api/enrollments/${id}`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update enrollment");
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       refetchEnrollments();
-      queryClient.invalidateQueries({ queryKey: ['/api/analytics/tutor'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/tutor"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/enrollments?status=pending&tutor=me"],
+      });
       toast({
-        title: 'Enrollment updated',
-        description: 'The enrollment status has been updated successfully.',
+        title: "Enrollment updated",
+        description: "The enrollment status has been updated successfully.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: `Failed to update enrollment: ${error}`,
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to update enrollment: ${error.message}`,
       });
-    }
+    },
   });
-  
+
   // Handle course selection change
   const handleCourseChange = (value: string) => {
     setSelectedCourse(value);
   };
-  
+
   // Handle enrollment approval/rejection
-  const updateEnrollmentStatus = (id: number, status: 'active' | 'rejected') => {
+  const updateEnrollmentStatus = (
+    id: number,
+    status: "active" | "rejected",
+  ) => {
     updateEnrollmentMutation.mutate({ id, status });
   };
-  
+
   const isLoading = loadingCourses || loadingEnrollments;
 
   return (
@@ -182,25 +212,25 @@ export default function TutorEnrollmentRequests() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Courses</SelectItem>
-                {courses.map(course => (
+                {courses.map((course) => (
                   <SelectItem key={course.id} value={String(course.id)}>
                     {course.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
-              <Input 
-                placeholder="Search students..." 
-                className="pl-10" 
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 h-4 w-4" />
+              <Input
+                placeholder="Search students..."
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
-          
+
           <div className="flex gap-2">
             <Badge variant="pending" className="flex items-center">
               <Clock className="h-3 w-3 mr-1" />
@@ -212,7 +242,7 @@ export default function TutorEnrollmentRequests() {
             </Badge>
           </div>
         </div>
-        
+
         <Tabs defaultValue="pending" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="pending" className="flex items-center gap-2">
@@ -228,7 +258,7 @@ export default function TutorEnrollmentRequests() {
               <span>Rejected</span>
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="pending">
             {isLoading ? (
               <Card>
@@ -242,13 +272,17 @@ export default function TutorEnrollmentRequests() {
                   <div className="mx-auto w-12 h-12 mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
                     <Clock className="h-6 w-6 text-neutral-500" />
                   </div>
-                  <h3 className="text-lg font-medium mb-1">No pending requests</h3>
-                  <p className="text-neutral-600 dark:text-neutral-400">All enrollment requests have been handled.</p>
+                  <h3 className="text-lg font-medium mb-1">
+                    No pending requests
+                  </h3>
+                  <p className="text-neutral-600 dark:text-neutral-400">
+                    All enrollment requests have been handled.
+                  </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="space-y-4">
-                {filteredEnrollments.pending.map(enrollment => (
+                {filteredEnrollments.pending.map((enrollment) => (
                   <Card key={enrollment.id}>
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -261,32 +295,41 @@ export default function TutorEnrollmentRequests() {
                               {enrollment.student.fullName}
                             </h3>
                             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                              {enrollment.student.email} • Requested {new Date(enrollment.requestedAt).toLocaleDateString()}
+                              {enrollment.student.email} • Requested{" "}
+                              {new Date(
+                                enrollment.requestedAt,
+                              ).toLocaleDateString()}
+                            </p>
+                            <p className="text-sm font-medium text-neutral-600 dark:text-neutral-300 mt-1">
+                              Course:{" "}
+                              {enrollment.course?.title ||
+                                `Course #${enrollment.courseId}`}
                             </p>
                           </div>
                         </div>
-                        
-                        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                          <div className="text-sm font-medium text-neutral-600 dark:text-neutral-300 mr-2">
-                            Course: {enrollment.course?.title || `Course #${enrollment.courseId}`}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button 
-                              variant="destructive" 
-                              size="sm"
-                              onClick={() => updateEnrollmentStatus(enrollment.id, 'rejected')}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                            <Button 
-                              size="sm"
-                              onClick={() => updateEnrollmentStatus(enrollment.id, 'active')}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                          </div>
+
+                        <div className="flex gap-2">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() =>
+                              updateEnrollmentStatus(enrollment.id, "rejected")
+                            }
+                            disabled={updateEnrollmentMutation.isPending}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              updateEnrollmentStatus(enrollment.id, "active")
+                            }
+                            disabled={updateEnrollmentMutation.isPending}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -295,7 +338,7 @@ export default function TutorEnrollmentRequests() {
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="active">
             {isLoading ? (
               <Card>
@@ -309,11 +352,13 @@ export default function TutorEnrollmentRequests() {
                   <div className="mx-auto w-12 h-12 mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
                     <UserPlus className="h-6 w-6 text-neutral-500" />
                   </div>
-                  <h3 className="text-lg font-medium mb-1">No active enrollments</h3>
+                  <h3 className="text-lg font-medium mb-1">
+                    No active enrollments
+                  </h3>
                   <p className="text-neutral-600 dark:text-neutral-400">
-                    {selectedCourse === 'all' 
-                      ? 'There are no active enrollments in any of your courses yet.' 
-                      : 'There are no active enrollments in this course yet.'}
+                    {selectedCourse === "all"
+                      ? "There are no active enrollments in any of your courses yet."
+                      : "There are no active enrollments in this course yet."}
                   </p>
                 </CardContent>
               </Card>
@@ -324,66 +369,87 @@ export default function TutorEnrollmentRequests() {
                     <CardTitle>Active Enrollments</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="border rounded-md">
-                      <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
-                        <thead className="bg-neutral-50 dark:bg-neutral-800">
-                          <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Student
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Course
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Enrolled On
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-neutral-200 dark:bg-neutral-800 dark:divide-neutral-700">
-                          {filteredEnrollments.active.map(enrollment => (
-                            <tr key={enrollment.id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 dark:bg-neutral-700">
-                                    {enrollment.student.fullName.charAt(0)}
-                                  </div>
-                                  <div className="ml-4">
-                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
-                                      {enrollment.student.fullName}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                                      {enrollment.student.email}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-neutral-900 dark:text-neutral-200">
-                                  {enrollment.course?.title || `Course #${enrollment.courseId}`}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                                  {new Date(enrollment.updatedAt).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right">
-                                <Badge variant="active">Active</Badge>
-                              </td>
+                    <div className="border rounded-md overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
+                          <thead className="bg-neutral-50 dark:bg-neutral-800">
+                            <tr>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Student
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Course
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Enrolled On
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Status
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-neutral-200 dark:bg-neutral-800 dark:divide-neutral-700">
+                            {filteredEnrollments.active.map((enrollment) => (
+                              <tr key={enrollment.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+                                      {enrollment.student.fullName.charAt(0)}
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
+                                        {enrollment.student.fullName}
+                                      </div>
+                                      <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                        {enrollment.student.email}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-neutral-900 dark:text-neutral-200">
+                                    {enrollment.course?.title ||
+                                      `Course #${enrollment.courseId}`}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                    {new Date(
+                                      enrollment.updatedAt,
+                                    ).toLocaleDateString()}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <Badge variant="active">
+                                    {enrollment.status === "completed"
+                                      ? "Completed"
+                                      : "Active"}
+                                  </Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="rejected">
             {isLoading ? (
               <Card>
@@ -397,7 +463,9 @@ export default function TutorEnrollmentRequests() {
                   <div className="mx-auto w-12 h-12 mb-4 rounded-full bg-neutral-100 flex items-center justify-center">
                     <XCircle className="h-6 w-6 text-neutral-500" />
                   </div>
-                  <h3 className="text-lg font-medium mb-1">No rejected enrollments</h3>
+                  <h3 className="text-lg font-medium mb-1">
+                    No rejected enrollments
+                  </h3>
                   <p className="text-neutral-600 dark:text-neutral-400">
                     You haven't rejected any enrollment requests yet.
                   </p>
@@ -410,65 +478,90 @@ export default function TutorEnrollmentRequests() {
                     <CardTitle>Rejected Enrollments</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="border rounded-md">
-                      <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
-                        <thead className="bg-neutral-50 dark:bg-neutral-800">
-                          <tr>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Student
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Course
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Rejected On
-                            </th>
-                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
-                              Action
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-neutral-200 dark:bg-neutral-800 dark:divide-neutral-700">
-                          {filteredEnrollments.rejected.map(enrollment => (
-                            <tr key={enrollment.id}>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="flex items-center">
-                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 dark:bg-neutral-700">
-                                    {enrollment.student.fullName.charAt(0)}
-                                  </div>
-                                  <div className="ml-4">
-                                    <div className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
-                                      {enrollment.student.fullName}
-                                    </div>
-                                    <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                                      {enrollment.student.email}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-neutral-900 dark:text-neutral-200">
-                                  {enrollment.course?.title || `Course #${enrollment.courseId}`}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <div className="text-sm text-neutral-500 dark:text-neutral-400">
-                                  {new Date(enrollment.updatedAt).toLocaleDateString()}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => updateEnrollmentStatus(enrollment.id, 'active')}
-                                >
-                                  Approve
-                                </Button>
-                              </td>
+                    <div className="border rounded-md overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
+                          <thead className="bg-neutral-50 dark:bg-neutral-800">
+                            <tr>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Student
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Course
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Rejected On
+                              </th>
+                              <th
+                                scope="col"
+                                className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                              >
+                                Action
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-neutral-200 dark:bg-neutral-800 dark:divide-neutral-700">
+                            {filteredEnrollments.rejected.map((enrollment) => (
+                              <tr key={enrollment.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+                                      {enrollment.student.fullName.charAt(0)}
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-200">
+                                        {enrollment.student.fullName}
+                                      </div>
+                                      <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                        {enrollment.student.email}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-neutral-900 dark:text-neutral-200">
+                                    {enrollment.course?.title ||
+                                      `Course #${enrollment.courseId}`}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="text-sm text-neutral-500 dark:text-neutral-400">
+                                    {new Date(
+                                      enrollment.updatedAt,
+                                    ).toLocaleDateString()}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      updateEnrollmentStatus(
+                                        enrollment.id,
+                                        "active",
+                                      )
+                                    }
+                                    disabled={
+                                      updateEnrollmentMutation.isPending
+                                    }
+                                  >
+                                    Approve
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

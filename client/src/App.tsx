@@ -31,7 +31,8 @@ import TutorEnrollmentRequests from "@/pages/tutor/EnrollmentRequests";
 import TutorAssignmentManagement from "@/pages/tutor/AssignmentManagement";
 import TutorSubmissionReview from "@/pages/tutor/SubmissionReview";
 import TutorAnalytics from "@/pages/tutor/Analytics";
-
+// Add this import at the top with your other imports
+import CourseModules from "@/pages/tutor/CourseModules";
 // Admin pages
 import AdminDashboard from "@/pages/admin/Dashboard";
 import AdminUserManagement from "@/pages/admin/UserManagement";
@@ -43,8 +44,8 @@ import AdminSettings from "@/pages/admin/Settings";
 function Login() {
   const { login } = useAuth();
   const [, setLocation] = useLocation();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,7 @@ function Login() {
     try {
       await login(username, password);
     } catch (err) {
-      setError('Failed to login. Please check your credentials.');
+      setError("Failed to login. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +76,7 @@ function Login() {
               {error}
             </div>
           )}
-          
+
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Username
@@ -109,14 +110,14 @@ function Login() {
             className="w-full bg-primary text-white font-medium py-2 px-4 rounded-lg hover:bg-primary/90 transition"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? "Signing in..." : "Sign in"}
           </button>
 
           <div className="text-center text-sm text-neutral-600 mt-4">
             <span>Don't have an account?</span>
-            <button 
+            <button
               type="button"
-              onClick={() => setLocation('/register')}
+              onClick={() => setLocation("/register")}
               className="text-primary hover:text-primary/90 pl-1"
             >
               Register here
@@ -131,15 +132,15 @@ function Login() {
 // PrivateRoute Component
 function PrivateRoute({ component: Component, roles, ...rest }: any) {
   const { isAuthenticated, user } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Route path={rest.path} component={Login} />;
   }
-  
+
   if (roles && !roles.includes(user?.role)) {
     return <Route path={rest.path} component={RoleRedirector} />;
   }
-  
+
   return <Route path={rest.path} component={Component} />;
 }
 
@@ -148,12 +149,16 @@ function AppRouter() {
   const { isVerifying, showTOTP } = useAuth();
 
   if (isVerifying) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-xl font-medium">Loading...</p>
-        <p className="text-gray-500 mt-2">Please wait while we authenticate you.</p>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl font-medium">Loading...</p>
+          <p className="text-gray-500 mt-2">
+            Please wait while we authenticate you.
+          </p>
+        </div>
       </div>
-    </div>;
+    );
   }
 
   if (showTOTP) {
@@ -166,35 +171,116 @@ function AppRouter() {
       <Route path="/" component={WelcomePage} />
       <Route path="/login" component={Login} />
       <Route path="/register" component={Register} />
-      
+
       {/* Role-specific dashboards */}
       <PrivateRoute path="/dashboard" component={RoleRedirector} />
-      
+
       {/* Student routes */}
-      <PrivateRoute path="/student/dashboard" component={StudentDashboard} roles={['student']} />
-      <PrivateRoute path="/student/courses" component={StudentCourses} roles={['student']} />
-      <PrivateRoute path="/student/courses/:slug" component={StudentCourseDetail} roles={['student']} />
-      <PrivateRoute path="/student/assignments" component={StudentAssignments} roles={['student']} />
-      <PrivateRoute path="/student/assignments/:id" component={StudentAssignmentSubmit} roles={['student']} />
-      <PrivateRoute path="/student/progress" component={StudentProgress} roles={['student']} />
-      
+      <PrivateRoute
+        path="/student/dashboard"
+        component={StudentDashboard}
+        roles={["student"]}
+      />
+      <PrivateRoute
+        path="/student/courses"
+        component={StudentCourses}
+        roles={["student"]}
+      />
+      <PrivateRoute
+        path="/student/courses/:slug"
+        component={StudentCourseDetail}
+        roles={["student"]}
+      />
+      <PrivateRoute
+        path="/student/assignments"
+        component={StudentAssignments}
+        roles={["student"]}
+      />
+      <PrivateRoute
+        path="/student/assignments/:id"
+        component={StudentAssignmentSubmit}
+        roles={["student"]}
+      />
+      <PrivateRoute
+        path="/student/progress"
+        component={StudentProgress}
+        roles={["student"]}
+      />
+
       {/* Tutor routes */}
-      <PrivateRoute path="/tutor/dashboard" component={TutorDashboard} roles={['tutor']} />
-      <PrivateRoute path="/tutor/courses" component={TutorCourseManagement} roles={['tutor']} />
-      <PrivateRoute path="/tutor/courses/new" component={TutorCourseEditor} roles={['tutor']} />
-      <PrivateRoute path="/tutor/courses/:id/edit" component={TutorCourseEditor} roles={['tutor']} />
-      <PrivateRoute path="/tutor/enrollments" component={TutorEnrollmentRequests} roles={['tutor']} />
-      <PrivateRoute path="/tutor/assignments" component={TutorAssignmentManagement} roles={['tutor']} />
-      <PrivateRoute path="/tutor/assignments/:id/submissions" component={TutorSubmissionReview} roles={['tutor']} />
-      <PrivateRoute path="/tutor/analytics" component={TutorAnalytics} roles={['tutor']} />
-      
+      <PrivateRoute
+        path="/tutor/dashboard"
+        component={TutorDashboard}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/courses"
+        component={TutorCourseManagement}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/courses/new"
+        component={TutorCourseEditor}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/courses/:id/edit"
+        component={TutorCourseEditor}
+        roles={["tutor"]}
+      />
+      {/* Add the new CourseModules route here */}
+      <PrivateRoute
+        path="/tutor/courses/:slug/modules"
+        component={CourseModules}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/enrollments"
+        component={TutorEnrollmentRequests}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/assignments"
+        component={TutorAssignmentManagement}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/assignments/:id/submissions"
+        component={TutorSubmissionReview}
+        roles={["tutor"]}
+      />
+      <PrivateRoute
+        path="/tutor/analytics"
+        component={TutorAnalytics}
+        roles={["tutor"]}
+      />
       {/* Admin routes */}
-      <PrivateRoute path="/admin/dashboard" component={AdminDashboard} roles={['admin']} />
-      <PrivateRoute path="/admin/users" component={AdminUserManagement} roles={['admin']} />
-      <PrivateRoute path="/admin/courses" component={AdminCourseOverview} roles={['admin']} />
-      <PrivateRoute path="/admin/badges" component={AdminBadgeManagement} roles={['admin']} />
-      <PrivateRoute path="/admin/settings" component={AdminSettings} roles={['admin']} />
-      
+      <PrivateRoute
+        path="/admin/dashboard"
+        component={AdminDashboard}
+        roles={["admin"]}
+      />
+      <PrivateRoute
+        path="/admin/users"
+        component={AdminUserManagement}
+        roles={["admin"]}
+      />
+      <PrivateRoute
+        path="/admin/courses"
+        component={AdminCourseOverview}
+        roles={["admin"]}
+      />
+      <PrivateRoute
+        path="/admin/badges"
+        component={AdminBadgeManagement}
+        roles={["admin"]}
+      />
+      <PrivateRoute
+        path="/admin/settings"
+        component={AdminSettings}
+        roles={["admin"]}
+      />
+
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

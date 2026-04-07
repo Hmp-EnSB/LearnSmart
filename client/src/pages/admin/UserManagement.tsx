@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
-import MainLayout from '@/components/layouts/MainLayout';
-import { Badge } from '@/components/ui/Badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import MainLayout from "@/components/layouts/MainLayout";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -28,20 +28,20 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Edit, 
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Users,
+  UserPlus,
+  Search,
+  Edit,
   UserCheck,
   UserX,
-  ChevronDown
-} from 'lucide-react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+  ChevronDown,
+} from "lucide-react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 interface User {
   id: number;
@@ -54,10 +54,10 @@ interface User {
 
 // Schema for user updates
 const userUpdateSchema = z.object({
-  fullName: z.string().min(1, 'Full name is required'),
-  email: z.string().email('Invalid email address'),
-  role: z.enum(['student', 'tutor', 'admin'], {
-    required_error: 'Please select a role',
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["student", "tutor", "admin"], {
+    required_error: "Please select a role",
   }),
 });
 
@@ -67,130 +67,152 @@ export default function AdminUserManagement() {
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  
+
   // Set up user edit form
   const form = useForm<UserUpdateFormValues>({
     resolver: zodResolver(userUpdateSchema),
     defaultValues: {
-      fullName: '',
-      email: '',
-      role: 'student'
-    }
+      fullName: "",
+      email: "",
+      role: "student",
+    },
   });
-  
+
   // Fetch users
-  const { data: usersData, isLoading, refetch: refetchUsers } = useQuery({
-    queryKey: ['/api/users'],
+  const {
+    data: usersData,
+    isLoading,
+    refetch: refetchUsers,
+  } = useQuery({
+    queryKey: ["/api/users"],
   });
-  
+
   // Process users data
   useEffect(() => {
     if (usersData) {
       setUsers(usersData);
     }
   }, [usersData]);
-  
+
   // Filter users based on search query and role filter
   useEffect(() => {
     let filtered = users;
-    
+
     // Apply role filter
-    if (roleFilter !== 'all') {
-      filtered = filtered.filter(user => user.role === roleFilter);
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((user) => user.role === roleFilter);
     }
-    
+
     // Apply search filter
-    if (searchQuery.trim() !== '') {
+    if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        user => 
-          user.fullName.toLowerCase().includes(query) || 
+        (user) =>
+          user.fullName.toLowerCase().includes(query) ||
           user.email.toLowerCase().includes(query) ||
-          user.username.toLowerCase().includes(query)
+          user.username.toLowerCase().includes(query),
       );
     }
-    
+
     setFilteredUsers(filtered);
   }, [users, searchQuery, roleFilter]);
-  
+
   // Update user mutation
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number, data: UserUpdateFormValues }) => {
-      const response = await apiRequest('PUT', `/api/users/${id}`, data);
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: UserUpdateFormValues;
+    }) => {
+      const response = await apiRequest("PUT", `/api/users/${id}`, data);
       return response.json();
     },
     onSuccess: () => {
       toast({
-        title: 'User updated',
-        description: 'User information has been updated successfully.',
+        title: "User updated",
+        description: "User information has been updated successfully.",
       });
       refetchUsers();
       setIsEditDialogOpen(false);
     },
     onError: (error) => {
       toast({
-        variant: 'destructive',
-        title: 'Error',
+        variant: "destructive",
+        title: "Error",
         description: `Failed to update user: ${error}`,
       });
-    }
+    },
   });
-  
+
   // Handle edit user click
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    
+
     form.reset({
       fullName: user.fullName,
       email: user.email,
-      role: user.role as 'student' | 'tutor' | 'admin'
+      role: user.role as "student" | "tutor" | "admin",
     });
-    
+
     setIsEditDialogOpen(true);
   };
-  
+
   // Handle form submission
   const handleSubmit = (values: UserUpdateFormValues) => {
     if (!selectedUser) return;
-    
+
     updateUserMutation.mutate({
       id: selectedUser.id,
-      data: values
+      data: values,
     });
   };
-  
+
   // Role badge component
   const RoleBadge = ({ role }: { role: string }) => {
     switch (role) {
-      case 'admin':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">Admin</Badge>;
-      case 'tutor':
-        return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">Tutor</Badge>;
-      case 'student':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">Student</Badge>;
+      case "admin":
+        return (
+          <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+            Admin
+          </Badge>
+        );
+      case "tutor":
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+            Tutor
+          </Badge>
+        );
+      case "student":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+            Student
+          </Badge>
+        );
       default:
         return <Badge variant="outline">{role}</Badge>;
     }
   };
-  
+
   return (
     <MainLayout title="User Management">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between">
           <div className="flex flex-1 max-w-md relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400" />
-            <Input 
-              placeholder="Search users..." 
-              className="pl-10" 
+            <Input
+              placeholder="Search users..."
+              className="pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           <div className="flex gap-3">
             <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger className="w-[180px]">
@@ -205,7 +227,7 @@ export default function AdminUserManagement() {
             </Select>
           </div>
         </div>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xl font-bold">Users</CardTitle>
@@ -214,11 +236,13 @@ export default function AdminUserManagement() {
                 <Users className="h-3 w-3" />
                 <span>Total: {filteredUsers.length}</span>
               </Badge>
-              
-              {roleFilter !== 'all' && (
+
+              {roleFilter !== "all" && (
                 <Badge variant="outline" className="flex items-center gap-1">
                   <UserCheck className="h-3 w-3" />
-                  <span>{roleFilter}: {filteredUsers.length}</span>
+                  <span>
+                    {roleFilter}: {filteredUsers.length}
+                  </span>
                 </Badge>
               )}
             </div>
@@ -235,9 +259,9 @@ export default function AdminUserManagement() {
                 </div>
                 <h3 className="text-lg font-medium mb-1">No users found</h3>
                 <p className="text-neutral-600 dark:text-neutral-400 mb-4">
-                  {searchQuery 
-                    ? 'Try adjusting your search query or filters' 
-                    : 'No users match the selected criteria'}
+                  {searchQuery
+                    ? "Try adjusting your search query or filters"
+                    : "No users match the selected criteria"}
                 </p>
               </div>
             ) : (
@@ -245,22 +269,34 @@ export default function AdminUserManagement() {
                 <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700">
                   <thead className="bg-neutral-50 dark:bg-neutral-800">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                      >
                         User
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                      >
                         Role
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                      >
                         Joined
                       </th>
-                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400">
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider dark:text-neutral-400"
+                      >
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-neutral-200 dark:bg-neutral-800 dark:divide-neutral-700">
-                    {filteredUsers.map(user => (
+                    {filteredUsers.map((user) => (
                       <tr key={user.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -289,8 +325,8 @@ export default function AdminUserManagement() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleEditUser(user)}
                           >
@@ -307,7 +343,7 @@ export default function AdminUserManagement() {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
@@ -317,9 +353,12 @@ export default function AdminUserManagement() {
               Update user information and role.
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="fullName"
@@ -333,7 +372,7 @@ export default function AdminUserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="email"
@@ -347,17 +386,14 @@ export default function AdminUserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="role"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Role</FormLabel>
-                    <Select 
-                      value={field.value} 
-                      onValueChange={field.onChange}
-                    >
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a role" />
@@ -373,11 +409,11 @@ export default function AdminUserManagement() {
                   </FormItem>
                 )}
               />
-              
+
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsEditDialogOpen(false)}
                 >
                   Cancel
